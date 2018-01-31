@@ -1,32 +1,22 @@
-/**
- * Main store function
- */
-import { createStore, applyMiddleware, compose } from 'redux';
+import { applyMiddleware, createStore } from 'redux';
+import { createLogger } from 'redux-logger';
 import thunk from 'redux-thunk';
-import DevTools from './modules/App/components/DevTools';
-import rootReducer from './reducers';
 
-export function configureStore(initialState = {}) {
-  // Middleware and store enhancers
-  const enhancers = [
-    applyMiddleware(thunk),
-  ];
+import reducers from './reducers';
 
-  if (process.env.CLIENT && process.env.NODE_ENV === 'development') {
-    // Enable DevTools only when rendering on client and during development.
-    enhancers.push(window.devToolsExtension ? window.devToolsExtension() : DevTools.instrument());
-  }
+const packages = [];
 
-  const store = createStore(rootReducer, initialState, compose(...enhancers));
+// Push middleware that you need for both development and production
+packages.push(thunk);
 
-  // For hot reloading reducers
-  if (module.hot) {
-    // Enable Webpack hot module replacement for reducers
-    module.hot.accept('./reducers', () => {
-      const nextReducer = require('./reducers').default; // eslint-disable-line global-require
-      store.replaceReducer(nextReducer);
-    });
-  }
-
-  return store;
+if (process.env.NODE_ENV === 'development') {
+  // Push the middleware that are specific for development
+  packages.push(createLogger());
 }
+
+const middleware = applyMiddleware(...packages);
+
+export default createStore(
+  reducers,
+  middleware,
+);

@@ -1,9 +1,14 @@
 {
-  "presets": ["react", "env", "stage-0"],
-  "plugins": ["react-hot-loader/babel"],
-  "env": {
-    "production": {
-      "presets": ["env", "react", "react-optimize", "stage-0"]
-    }
-  }
+  "presets": [
+    [
+      "env",
+      {
+        "targets": {
+          "browsers": ["last 2 versions", "safari >= 7"]
+        }
+      }
+    ],
+    "react"
+  ],
+  "plugins": ["transform-object-rest-spread"]
 }

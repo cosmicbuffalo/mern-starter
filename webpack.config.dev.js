@@ -1,85 +1,85 @@
-var webpack = require('webpack');
-var cssnext = require('postcss-cssnext');
-var postcssFocus = require('postcss-focus');
-var postcssReporter = require('postcss-reporter');
+const webpack = require('webpack');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const path = require('path');
+const precss = require('precss');
+const postcssImport = require('postcss-import');
+const cssNext = require('postcss-cssnext');
+const cssNested = require('postcss-nested');
+const ExtractTextPlugin = require('extract-text-webpack-plugin');
 
-module.exports = {
-  devtool: 'cheap-module-eval-source-map',
+const config = {
+  context: path.resolve(__dirname, 'client'),
+
+  devtool: 'eval-source-map',
 
   entry: {
-    app: [
-      'eventsource-polyfill',
-      'webpack-hot-middleware/client',
-      'webpack/hot/only-dev-server',
-      'react-hot-loader/patch',
-      './client/index.js',
-    ],
-    vendor: [
-      'react',
-      'react-dom',
-    ],
+    app: './app.jsx',
   },
 
   output: {
-    path: __dirname,
-    filename: 'app.js',
-    publicPath: 'http://0.0.0.0:8000/',
-  },
-
-  resolve: {
-    extensions: ['', '.js', '.jsx'],
-    modules: [
-      'client',
-      'node_modules',
-    ],
+    path: path.resolve(__dirname, 'dist'),
+    publicPath: '/',
+    filename: 'js/[name].js',
   },
 
   module: {
-    loaders: [
+    rules: [
+      {
+        test: /\.jsx?$/,
+        exclude: /(node_modules|bower_components)/,
+        use: {
+          loader: 'babel-loader',
+          options: {
+            presets: ['env', 'react'],
+          },
+        },
+      },
       {
         test: /\.css$/,
-        exclude: /node_modules/,
-        loader: 'style-loader!css-loader?localIdentName=[name]__[local]__[hash:base64:5]&modules&importLoaders=1&sourceMap!postcss-loader',
-      }, {
-        test: /\.css$/,
-        include: /node_modules/,
-        loaders: ['style-loader', 'css-loader'],
-      }, {
-        test: /\.jsx*$/,
-        exclude: [/node_modules/, /.+\.config.js/],
-        loader: 'babel',
-      }, {
-        test: /\.(jpe?g|gif|png|svg)$/i,
-        loader: 'url-loader?limit=10000',
-      }, {
-        test: /\.json$/,
-        loader: 'json-loader',
+        use: ExtractTextPlugin.extract({
+          fallback: 'style-loader',
+          use: [
+            {
+              loader: 'css-loader',
+              options: {
+                modules: true,
+                localIndentName: '[name]__[local]__[hash:base64:5]',
+              },
+            },
+            {
+              loader: 'postcss-loader',
+              options: {
+                plugins: () => [
+                  precss,
+                  postcssImport({
+                    addDependencyTo: webpack,
+                  }),
+                  cssNext({
+                    browsers: ['Chrome >= 31', 'Firefox >= 31', 'IE >= 9'],
+                    url: false,
+                  }),
+                  cssNested,
+                ],
+              },
+            },
+          ],
+        }),
       },
     ],
   },
 
   plugins: [
-    new webpack.HotModuleReplacementPlugin(),
-    new webpack.optimize.CommonsChunkPlugin({
-      name: 'vendor',
-      minChunks: Infinity,
-      filename: 'vendor.js',
+    new ExtractTextPlugin('css/app.css'),
+    new HtmlWebpackPlugin({
+      title: 'MERN | Build amazing things ... faster',
+      template: './index.html',
     }),
     new webpack.DefinePlugin({
       'process.env': {
-        CLIENT: JSON.stringify(true),
-        'NODE_ENV': JSON.stringify('development'),
-      }
-    }),
-  ],
-
-  postcss: () => [
-    postcssFocus(),
-    cssnext({
-      browsers: ['last 2 versions', 'IE > 10'],
-    }),
-    postcssReporter({
-      clearMessages: true,
+        NODE_ENV: JSON.stringify('development'),
+      },
     }),
   ],
 };
+
+module.exports = config;

@@ -1,7 +1,5 @@
-import Post from '../models/post';
-import cuid from 'cuid';
-import slug from 'limax';
-import sanitizeHtml from 'sanitize-html';
+const Post = require('../models/post');
+const slug = require('limax');
 
 /**
  * Get all posts
@@ -9,14 +7,14 @@ import sanitizeHtml from 'sanitize-html';
  * @param res
  * @returns void
  */
-export function getPosts(req, res) {
-  Post.find().sort('-dateAdded').exec((err, posts) => {
-    if (err) {
-      res.status(500).send(err);
-    }
-    res.json({ posts });
-  });
-}
+exports.getPosts = async function getPosts(req, res) {
+  try {
+    const posts = await Post.find().sort('-dateAdded').exec();
+    res.status(200).json({ posts });
+  } catch (e) {
+    return res.status(500).send(e);
+  }
+};
 
 /**
  * Save a post
@@ -24,57 +22,56 @@ export function getPosts(req, res) {
  * @param res
  * @returns void
  */
-export function addPost(req, res) {
-  if (!req.body.post.name || !req.body.post.title || !req.body.post.content) {
-    res.status(403).end();
+exports.addPost = async function addPost(req, res) {
+  try {
+    if (!req.body.post.name || !req.body.post.title || !req.body.post.content) {
+      return res.status(403).end();
+    }
+    const newPost = new Post(req.body.post);
+    newPost.slug = slug(newPost.title.toLowerCase(), { lowercase: true });
+    const saved = await newPost.save();
+    res.status(201).json({ post: saved });
+  } catch (e) {
+    return res.status(500).send(e);
   }
-
-  const newPost = new Post(req.body.post);
-
-  // Let's sanitize inputs
-  newPost.title = sanitizeHtml(newPost.title);
-  newPost.name = sanitizeHtml(newPost.name);
-  newPost.content = sanitizeHtml(newPost.content);
-
-  newPost.slug = slug(newPost.title.toLowerCase(), { lowercase: true });
-  newPost.cuid = cuid();
-  newPost.save((err, saved) => {
-    if (err) {
-      res.status(500).send(err);
-    }
-    res.json({ post: saved });
-  });
-}
+};
 
 /**
- * Get a single post
+ * Get a single post by slug
  * @param req
  * @param res
  * @returns void
  */
-export function getPost(req, res) {
-  Post.findOne({ cuid: req.params.cuid }).exec((err, post) => {
-    if (err) {
-      res.status(500).send(err);
+exports.getPost = async function getPost(req, res) {
+  try {
+    const post = await Post.findOne({ slug: req.params.slug }).exec();
+    if (!post) {
+      return res.sendStatus(404);
     }
-    res.json({ post });
-  });
-}
+    res.status(200).json({ post });
+  } catch (e) {
+    if (e.name === 'CastError') { return res.sendStatus(400); }
+    return res.status(500).send(e);
+  }
+};
 
 /**
- * Delete a post
+ * Delete a post by slug
  * @param req
  * @param res
  * @returns void
  */
-export function deletePost(req, res) {
-  Post.findOne({ cuid: req.params.cuid }).exec((err, post) => {
-    if (err) {
-      res.status(500).send(err);
+exports.deletePost = async function deletePost(req, res) {
+  try {
+    const post = await Post.findOne({ slug: req.params.slug }).exec();
+    if (!post) {
+      return res.sendStatus(404);
     }
+    await post.remove();
+    res.sendStatus(200);
+  } catch (e) {
+    if (e.name === 'CastError') { return res.sendStatus(400); }
+    return res.status(500).send(e);
+  }
+};
 
-    post.remove(() => {
-      res.status(200).end();
-    });
-  });
-}
